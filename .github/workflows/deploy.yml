@@ -1,0 +1,47 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main        # Deploy a producción en cada push a main
+  pull_request:
+    branches:
+      - main        # Deploy de preview en cada PR hacia main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build & Deploy
+
+    steps:
+      # 1. Checkout del código
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Configurar Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Instalar dependencias
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build de Next.js (genera carpeta out/)
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      # 5. Deploy a Cloudflare Pages
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: jm-proquest-v1          # Nombre del proyecto en Cloudflare Pages
+          directory: out                        # Carpeta generada por next build
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}  # Para comentarios de preview en PRs
